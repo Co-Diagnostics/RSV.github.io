@@ -35,7 +35,14 @@
     display: flex;
     overflow-y: visible;
     font-size: 12pt;
-    background-color: rgba(253, 253, 253, 0.5);
+
+    background: rgba(253, 253, 253, .9);
     white-space: pre;
     opacity: 1;
+
+}
+
+.axis-labels{
+    font-size: 16px;
+
 }

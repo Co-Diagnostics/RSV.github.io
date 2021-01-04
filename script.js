@@ -85,6 +85,7 @@ class Main{
 
     textAdder(){
 
+        let body = d3.select('body')
         /* this method is to add additional information and text to the page as necessary */
         d3.select('#header')
             .append('h1')
@@ -92,14 +93,70 @@ class Main{
             .text('CoPrimer Mismatch Visualization for ' + this.organism)
 
         // add a tooltip 
-        d3.select('body').append('div')
+        body.append('div')
             .classed('tooltip', true)
             .attr('id', 'hist-tooltip')
             .style('visibility', 'hidden')
+
+        // add axis labels
             
+        // y-axis
+        d3.select('#hist-svg').append('g')
+            .attr('id', 'y-axis-label')
+            .classed('axis-labels', true)
+            .append('text')
+            .text('Percent mismatches')
+            .attr('dy', '2em')
+            .attr('transform',`translate(0, ${this.vizHeight/2})rotate(-90)`)
+        
+        // x-axis
+        d3.select('#hist-svg').append('g')
+            .attr('id', 'x-axis-label')
+            .classed('axis-labels', true)
+            .append('text')
+            .text('Genome position')
+            .attr('y', `${this.vizHeight -20}`)
+            .attr('x', `${this.vizWidth/2}`)
+
+        // legend and additional information
+
+        let legend = d3.select('#hist-svg').append('g')
+            .attr('id', 'legend')
+            .attr('transform', 'translate(900, 0)')
+            
+        legend.append('rect')
+            .attr('width', 20)
+            .attr('height', 10)
+            .attr('x', 0)
+            .attr('y', 5)
+            .style('fill', 'red')
+
+        legend.append('text')
+            .attr('x', 30)
+            .attr('y', 15)
+            .text('Forward Co-Primer')
+
+        legend.append('rect')
+            .attr('width', 20)
+            .attr('height', 10)
+            .attr('x', 0)
+            .attr('y', 25)
+            .style('fill', 'blue')
+
+        legend.append('text')
+            .attr('x', 30)
+            .attr('y', 35)
+            .text('Reverse Co-Primer')
+
+        let number_of_sequences = this.mismatchData[0].number_of_sequences
+
+        legend.append('text')
+            .attr('x', 0)
+            .attr('y', 55)
+            .text(`Number of sequences: ${number_of_sequences}`)
             
 
-
+        
 
     };
 
@@ -185,6 +242,16 @@ class Main{
         let stop = parseInt(reversePrimer.stop_position)
         let ampliconLength = stop - start
 
+
+
+        d3.select('#legend')
+            .append('g')
+            .attr('id', 'amplicon-length')
+            .append('text')
+            .attr('x', 0)
+            .attr('y', 75)
+            .text(`Amplicon Length: ${ampliconLength}`)
+
         let maxPosition = d3.max(this.mismatchData.map(d=>d.positions))
 
 
@@ -207,6 +274,7 @@ class Main{
         let histData = this.mismatchData.filter(d=>d.positions>=domain[0] && d.positions<=domain[1])
 
         let maxY = d3.max(histData.map(d=>d.mismatches/d.number_of_sequences))
+
 
 
         // x scale and draw x axis
@@ -334,7 +402,12 @@ class Main{
         let stop = parseInt(reversePrimer.stop_position)
         let ampliconLength = stop - start
 
+        d3.select('#amplicon-length').selectAll('text')
+            .text(`Amplicon Length: ${ampliconLength}`)
+
         let maxPosition = d3.max(this.mismatchData.map(d=>d.positions))
+        // d3.select('#legend')
+        //     .text(`Amplicon length: ${ampliconLength}`)
 
         // define domain to be 10 bp beyond the span of the primer
         let domain
