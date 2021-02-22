@@ -1,6 +1,6 @@
 
 let mismatchPath = "data\\mismatches.csv"
-let organism = 'SARS-COV-2'
+let organism = 'RSV_cluster_0'
 
 // read in the data in asyc function
 Promise.all([
