@@ -1,6 +1,6 @@
 
 let mismatchPath = "data\\mismatches.csv"
-let organism = 'RSV'
+let organism = 'SARS-COV-2'
 
 // read in the data in asyc function
 Promise.all([
@@ -28,7 +28,9 @@ class Main{
                 mismatches: parseInt(d.mismatches),
                 positions: parseInt(d.positions), 
                 bases: d.bases, 
-                number_of_sequences: parseInt(d.number_of_sequences)
+                number_of_sequences: parseInt(d.number_of_sequences),
+                common_mismatch: d.common_mismatch,
+                common_mismatch_freq: parseFloat(d.common_mismatch_freq)
         }
         })
 
@@ -243,7 +245,6 @@ class Main{
         let ampliconLength = stop - start
 
 
-
         d3.select('#legend')
             .append('g')
             .attr('id', 'amplicon-length')
@@ -270,6 +271,8 @@ class Main{
             domain = [0, maxPosition]
         }
 
+        
+
         // filter the histogram data
         let histData = this.mismatchData.filter(d=>d.positions>=domain[0] && d.positions<=domain[1])
 
@@ -290,15 +293,25 @@ class Main{
             .attr('id', 'hist-xaxis')
             .attr('transform', `translate(0, ${this.vizHeight-this.histMargins.bottom-100})`)
             .call(d3.axisBottom(x));
+
+        var yHeight
+            if (maxY < 0.01){
+                yHeight = 0.03
+            }else{
+                yHeight = maxY + maxY*.2
+            }
+        
+        console.log(yHeight)
         
         let y = d3.scaleLinear()
-            .domain([0, maxY + 0.1])
+            .domain([0, yHeight])
             .range([this.vizHeight-this.histMargins.top-100, this.histMargins.bottom])
 
         this.y = y
             
 
         let yAxis = d3.axisLeft(y).ticks(10)
+            .tickFormat(d3.format(",.1%"))
 
         histSVG.append('g')
             .attr('id', 'hist-yaxis')
@@ -388,6 +401,21 @@ class Main{
                 })
                 .attr('height', 10)
                 .style('fill', d=>color(d.type))
+
+        // add sequence
+        let sequenceGroup = d3.select('#hist-svg').append('g')
+            .attr('id', 'sequence')
+            .classed('sequence-text', true)
+            .attr('x', 0)
+            .attr('y', this.vizHeight - 100)
+            .attr('transform', `translate(0, ${this.vizHeight -60})`)
+            
+
+        sequenceGroup.selectAll('text')
+            .data(histData)
+            .join('text')
+            .text(d=>d.bases)
+            .attr('x', d=>x(d.positions - .5))
         
     };
  
@@ -443,8 +471,22 @@ class Main{
             .call(d3.axisBottom(x));
 
 
+        // update y-axis
+
+        var yHeight
+            if (maxY < 0.01){
+                if(['Forward', 'Reverse'].includes(this.vizselection)){
+                    yHeight = 0.01
+                }else{
+                    yHeight = 0.03
+                }
+            }else{
+                yHeight = maxY + maxY*.2
+            }
+
+
         let y = d3.scaleLinear()
-            .domain([0, maxY + 0.1])
+            .domain([0, yHeight])
             .range([this.vizHeight-this.histMargins.top-100, this.histMargins.bottom])
 
         this.y = y
@@ -452,7 +494,7 @@ class Main{
         
         d3.select('#hist-yaxis')
             .transition().duration(this.duration)
-            .call(d3.axisLeft(y))
+            .call(d3.axisLeft(y).tickFormat(d3.format(",.1%")))
 
 
         // update bars
@@ -463,20 +505,22 @@ class Main{
             .join(enter=>{enter
                 .append('rect')
                 .classed('histbar', true)
-                .attr('x', d=>x(d.positions - 0.5))
+                .attr('x', this.vizWidth)
                 .attr('y', d=>y(d.mismatches/d.number_of_sequences))
+                .attr('width', d=>{
+                    let width = this.vizWidth/histData.length - 1
+                    if (width > 0) {return width}
+                    else{return 0.1}
+                })
                 .attr('height', d=>{
                     let height = this.vizHeight - y(d.mismatches/d.number_of_sequences) -100 - this.histMargins.bottom
                     if (height > 0){
                         return height
                     }else{return 0}
                     })
-                .attr('width', d=>{
-                    let width = this.vizWidth/histData.length - 1
-                    if (width > 0) {return width}
-                    else{return 0.1}
-                })
                 .transition().duration(this.duration)
+                .attr('x', d=>x(d.positions - 0.5))
+                
             
             }, 
             update=>{update.transition().duration(this.duration)
@@ -497,6 +541,7 @@ class Main{
                 
             }, 
             exit => {exit.transition().duration(this.duration)
+                .attr('x', this.vizWidth)
                 .remove()
             }
             )
@@ -568,6 +613,23 @@ class Main{
                     .remove()    
                 }
             )
+
+            // add genome if in single-primer view
+        let sequenceGroup = d3.select('#sequence')
+            
+
+        sequenceGroup.selectAll('text')
+            .data(histData)
+            .join('text')
+            .text(d=>d.bases)
+            .attr('x', d=>x(d.positions - .3))
+
+            if (['Forward', 'Reverse'].includes(this.vizselection)){
+                sequenceGroup.style('visibility', 'visible')
+            }
+            else{
+                sequenceGroup.style('visibility', 'hidden')
+            }
             
 
 
@@ -592,7 +654,8 @@ class Main{
             let target = d3.select(event.target)
             let data = target._groups[0][0].__data__
             let percentMismatch = data.mismatches/data.number_of_sequences*100
-            let formattedText = `Position: ${data.positions}\nNumber of mismatches: ${data.mismatches} \nPercent Mismatches: ${percentMismatch.toFixed(2)}%\nMost common base: ${data.bases}`
+            let common_mismatch_freq = (data.common_mismatch_freq*100).toFixed(2)
+            let formattedText = `Position: ${data.positions}\nNumber of mismatches: ${data.mismatches}\nPercent Mismatches: ${percentMismatch.toFixed(2)}%\nMost common base: ${data.bases}\nMost common mismatch: ${data.common_mismatch}\nCommon mismatch frequency: ${common_mismatch_freq}%`
             let top = this.y(data.mismatches/data.number_of_sequences) + 80
             let left = this.x(data.positions)
 
